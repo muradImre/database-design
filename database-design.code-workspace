@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "database-design",
+			"path": "."
+		},
+		{
+			"name": "data",
+			"path": "../../Downloads/schema exampels/data"
+		},
+		{
+			"name": "schemas",
+			"path": "../../Downloads/schema exampels/schemas"
+		}
+	],
+	"settings": {}
+}

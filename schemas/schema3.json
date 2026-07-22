@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "properties": {
+    "product": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "availability": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "brand", "price", "features", "availability"]
+    }
+  },
+  "required": ["product"]
+}
