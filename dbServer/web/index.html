@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B-tree NoSQL DB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0e1a17;
+      --panel: #14241f;
+      --panel-2: #1a2e28;
+      --line: #2a433b;
+      --mint: #7dcfb6;
+      --mint-dim: #3d8f78;
+      --text: #e6f0ec;
+      --muted: #8aa399;
+      --warn: #e8a87c;
+      --err: #e07a6a;
+      --ok: #7dcfb6;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; min-height: 100%;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1f3d34 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #243a2f 0%, transparent 50%),
+        var(--ink);
+      color: var(--text);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    h1, h2, .brand {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    a { color: var(--mint); }
+    button, input, textarea, select {
+      font: inherit; color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.55rem 0.7rem;
+    }
+    button {
+      background: var(--mint-dim);
+      border-color: transparent;
+      color: #04120e;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.08); }
+    button.ghost {
+      background: transparent;
+      color: var(--mint);
+      border-color: var(--line);
+    }
+    button.danger { background: #6b3a34; color: #f5d8d3; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 0.3rem; }
+    .row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: end; }
+    .row > * { flex: 1 1 auto; min-width: 120px; }
+    .stack { display: grid; gap: 0.75rem; }
+
+    /* Login: one composition */
+    #login {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+      animation: rise 0.6s ease-out both;
+    }
+    #login .panel {
+      width: min(440px, 100%);
+      padding: 2.4rem 2rem 2rem;
+      background: linear-gradient(180deg, var(--panel) 0%, #101c18 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    }
+    .brand {
+      font-size: clamp(2rem, 5vw, 2.6rem);
+      margin: 0 0 0.4rem;
+      color: var(--text);
+    }
+    .tagline {
+      margin: 0 0 1.6rem;
+      color: var(--muted);
+      max-width: 32ch;
+    }
+    #login .actions { margin-top: 1rem; display: flex; gap: 0.6rem; }
+    #login .actions button { flex: 1; }
+
+    /* Console */
+    #app { display: none; min-height: 100vh; }
+    header.appbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: 1rem 1.4rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(14,26,23,0.85);
+      backdrop-filter: blur(8px);
+      position: sticky; top: 0; z-index: 2;
+      animation: slide 0.4s ease-out both;
+    }
+    header .brand { font-size: 1.35rem; margin: 0; }
+    header .meta { color: var(--muted); font-size: 12px; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(200px, 260px) 1fr;
+      gap: 0;
+      min-height: calc(100vh - 58px);
+    }
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+    }
+    aside {
+      border-right: 1px solid var(--line);
+      padding: 1rem;
+      background: rgba(20,36,31,0.55);
+    }
+    section.work { padding: 1.2rem 1.4rem 2rem; }
+    .section-title {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.25rem;
+      margin: 0 0 0.35rem;
+    }
+    .hint { color: var(--muted); margin: 0 0 1rem; font-size: 12px; }
+    .store-list { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+    .store-list li button {
+      width: 100%; text-align: left;
+      background: transparent; color: var(--text);
+      border: 1px solid transparent;
+      margin-bottom: 0.25rem;
+    }
+    .store-list li button.active,
+    .store-list li button:hover {
+      border-color: var(--line);
+      background: var(--panel-2);
+      color: var(--mint);
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+    th, td {
+      text-align: left; padding: 0.55rem 0.4rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; }
+    td.id { color: var(--mint); cursor: pointer; }
+    pre.doc {
+      margin: 0; white-space: pre-wrap; word-break: break-word;
+      color: var(--text); font-size: 12px;
+      max-height: 4.5em; overflow: hidden;
+    }
+    .editor {
+      display: grid; gap: 0.75rem;
+      margin-top: 1.2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--line);
+    }
+    textarea {
+      width: 100%; min-height: 140px; resize: vertical;
+    }
+    #status {
+      min-height: 1.2em;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 0.5rem;
+    }
+    #status.err { color: var(--err); }
+    #status.ok { color: var(--ok); }
+    .hidden { display: none !important; }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes slide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <div class="panel">
+      <h1 class="brand">B-tree NoSQL DB</h1>
+      <p class="tagline">A document store backed by a copy-on-write B-tree. Sign in to browse stores.</p>
+      <div class="stack">
+        <div>
+          <label for="username">Username</label>
+          <input id="username" value="demo" autocomplete="username" />
+        </div>
+        <div>
+          <label for="token">Or paste a bearer token</label>
+          <input id="token" placeholder="demo_token" autocomplete="off" />
+        </div>
+        <div class="actions">
+          <button id="btn-session" type="button">Create session</button>
+          <button id="btn-token" class="ghost" type="button">Use token</button>
+        </div>
+        <div id="login-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <header class="appbar">
+      <div>
+        <h1 class="brand">B-tree NoSQL DB</h1>
+        <div class="meta" id="who"></div>
+      </div>
+      <button class="ghost" id="btn-logout" type="button">Sign out</button>
+    </header>
+    <main>
+      <aside>
+        <div class="row">
+          <div>
+            <label for="new-store">New store</label>
+            <input id="new-store" placeholder="demo" />
+          </div>
+          <button id="btn-create-store" type="button">Create</button>
+        </div>
+        <ul class="store-list" id="stores"></ul>
+      </aside>
+      <section class="work">
+        <h2 class="section-title" id="store-title">Select a store</h2>
+        <p class="hint">Documents are ordered by id in the B-tree index. Click an id to load it into the editor.</p>
+        <div id="docs-wrap" class="hidden">
+          <table>
+            <thead><tr><th>id</th><th>data</th><th></th></tr></thead>
+            <tbody id="docs"></tbody>
+          </table>
+          <div class="editor">
+            <div class="row">
+              <div>
+                <label for="doc-id">Document id</label>
+                <input id="doc-id" placeholder="person1" />
+              </div>
+              <button id="btn-save" type="button">Put document</button>
+              <button id="btn-delete" class="danger" type="button">Delete</button>
+            </div>
+            <div>
+              <label for="doc-body">JSON body</label>
+              <textarea id="doc-body">{
+  "name": "Ada",
+  "age": 36
+}</textarea>
+            </div>
+          </div>
+        </div>
+        <div id="status"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = { token: "", user: "", store: "" };
+
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $("status");
+    const loginStatus = $("login-status");
+
+    function setStatus(msg, kind) {
+      statusEl.textContent = msg || "";
+      statusEl.className = kind || "";
+    }
+    function setLoginStatus(msg, kind) {
+      loginStatus.textContent = msg || "";
+      loginStatus.style.color = kind === "err" ? "var(--err)" : "var(--muted)";
+    }
+
+    async function api(method, path, body) {
+      const opts = {
+        method,
+        headers: { Authorization: "Bearer " + state.token },
+      };
+      if (body !== undefined) {
+        opts.headers["Content-Type"] = "application/json";
+        opts.body = typeof body === "string" ? body : JSON.stringify(body);
+      }
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch (_) {}
+      if (!res.ok) {
+        const msg = (json && json.error && json.error.message) || text || res.statusText;
+        throw new Error(msg);
+      }
+      return json;
+    }
+
+    function enterApp() {
+      $("login").style.display = "none";
+      $("app").style.display = "block";
+      $("who").textContent = "signed in as " + (state.user || "token holder");
+      refreshStores();
+    }
+
+    $("btn-session").onclick = async () => {
+      try {
+        const username = $("username").value.trim();
+        const res = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error((json.error && json.error.message) || "login failed");
+        state.token = json.access_token;
+        state.user = username;
+        enterApp();
+      } catch (e) {
+        setLoginStatus(e.message, "err");
+      }
+    };
+
+    $("btn-token").onclick = () => {
+      const t = $("token").value.trim();
+      if (!t) { setLoginStatus("paste a token first", "err"); return; }
+      state.token = t;
+      state.user = "preloaded";
+      enterApp();
+    };
+
+    $("btn-logout").onclick = async () => {
+      try { await api("DELETE", "/api/session"); } catch (_) {}
+      location.reload();
+    };
+
+    async function refreshStores() {
+      try {
+        const data = await api("GET", "/api/stores");
+        const ul = $("stores");
+        ul.innerHTML = "";
+        (data.stores || []).forEach((name) => {
+          const li = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = name;
+          if (name === state.store) btn.classList.add("active");
+          btn.onclick = () => selectStore(name);
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+        setStatus("loaded " + (data.stores || []).length + " store(s)", "ok");
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    }
+
+    $("btn-create-store").onclick = async () => {
+      const name = $("new-store").value.trim();
+      if (!name) return;
+      try {
+        await api("PUT", "/api/stores/" + encodeURIComponent(name));
+        $("new-store").value = "";
+        await refreshStores();
+        selectStore(name);
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    };
+
+    async function selectStore(name) {
+      state.store = name;
+      $("store-title").textContent = "Store · " + name;
+      $("docs-wrap").classList.remove("hidden");
+      Array.from(document.querySelectorAll(".store-list button")).forEach((b) => {
+        b.classList.toggle("active", b.textContent === name);
+      });
+      await refreshDocs();
+    }
+
+    async function refreshDocs() {
+      try {
+        const docs = await api("GET", "/api/stores/" + encodeURIComponent(state.store) + "/docs");
+        const tbody = $("docs");
+        tbody.innerHTML = "";
+        (docs || []).forEach((d) => {
+          const tr = document.createElement("tr");
+          const id = document.createElement("td");
+          id.className = "id";
+          id.textContent = d.id;
+          id.onclick = () => {
+            $("doc-id").value = d.id;
+            $("doc-body").value = JSON.stringify(d.data, null, 2);
+          };
+          const data = document.createElement("td");
+          const pre = document.createElement("pre");
+          pre.className = "doc";
+          pre.textContent = JSON.stringify(d.data);
+          data.appendChild(pre);
+          const actions = document.createElement("td");
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.type = "button";
+          del.textContent = "Delete";
+          del.onclick = async () => {
+            try {
+              await api("DELETE", "/api/stores/" + encodeURIComponent(state.store) + "/docs/" + encodeURIComponent(d.id));
+              await refreshDocs();
+              setStatus("deleted " + d.id, "ok");
+            } catch (e) { setStatus(e.message, "err"); }
+          };
+          actions.appendChild(del);
+          tr.appendChild(id);
+          tr.appendChild(data);
+          tr.appendChild(actions);
+          tbody.appendChild(tr);
+        });
+        setStatus((docs || []).length + " document(s)", "ok");
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    }
+
+    $("btn-save").onclick = async () => {
+      const id = $("doc-id").value.trim();
+      if (!id || !state.store) return;
+      try {
+        JSON.parse($("doc-body").value); // validate
+        await api("PUT",
+          "/api/stores/" + encodeURIComponent(state.store) + "/docs/" + encodeURIComponent(id),
+          $("doc-body").value);
+        await refreshDocs();
+        setStatus("saved " + id, "ok");
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    };
+
+    $("btn-delete").onclick = async () => {
+      const id = $("doc-id").value.trim();
+      if (!id || !state.store) return;
+      try {
+        await api("DELETE", "/api/stores/" + encodeURIComponent(state.store) + "/docs/" + encodeURIComponent(id));
+        await refreshDocs();
+        setStatus("deleted " + id, "ok");
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    };
+  </script>
+</body>
+</html>

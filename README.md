@@ -25,6 +25,7 @@ package design.
 - Debounced disk snapshot persistence so stores survive restarts
 - Unauthenticated `/api/health` endpoint
 - Package layout separating auth, storage, HTTP, schema, and patch logic
+- Embedded admin console at `/` for browsing stores and documents in the browser
 
 ## Requirements
 
@@ -91,6 +92,9 @@ curl -s http://localhost:8080/api/health
 ```
 
 `/api/health` requires no authentication.
+
+Open `http://localhost:8080/` for the embedded admin console — create a session
+with a username, then browse stores and documents in the browser.
 
 ## API overview
 
@@ -169,7 +173,8 @@ Errors use a consistent envelope:
 .
 ├── auth/          # Session tokens (crypto/rand) + login/logout HTTP adapters
 ├── db/            # Flat document storage model + snapshot export/import
-├── dbServer/      # HTTP API, routing, and debounced snapshot writer
+├── dbServer/      # HTTP API, routing, debounced snapshot writer, embedded UI
+│   └── web/       # Single-page admin console (served at /)
 ├── patch/         # RFC 6902 JSON Patch implementation
 ├── persist/       # On-disk snapshot format and load/save helpers
 ├── schema/        # Schema parse + validate

@@ -204,6 +204,9 @@ func newMux(handlers *serverHandlers) *http.ServeMux {
 		}
 	}))
 
+	// Everything else serves the single-page admin console.
+	mux.HandleFunc("/", serveUI)
+
 	return mux
 }
 
