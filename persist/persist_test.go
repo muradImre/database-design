@@ -18,10 +18,10 @@ func newDB(name string) *db.Database {
 
 func TestSnapshotRoundTrip(t *testing.T) {
 	src := newDB("demo")
-	if _, err := src.WriteDocument("murad", "person1", []byte(`{"name":"Ada","age":36}`), true); err != nil {
+	if _, err := src.WriteDocument("admin", "person1", []byte(`{"name":"Ada","age":36}`), true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := src.WriteDocument("murad", "person2", []byte(`{"name":"Bob","age":40}`), true); err != nil {
+	if _, err := src.WriteDocument("admin", "person2", []byte(`{"name":"Bob","age":40}`), true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -56,7 +56,7 @@ func TestSnapshotRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected data: %s", doc.GetDocData())
 	}
 	meta := doc.GetDocMetadata()
-	if meta.CreatedBy() != "murad" {
+	if meta.CreatedBy() != "admin" {
 		t.Fatalf("metadata not restored")
 	}
 

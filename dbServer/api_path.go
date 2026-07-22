@@ -9,9 +9,10 @@ const (
 	apiPrefix   = "/api"
 	storesRoot  = "stores"
 	docsSeg     = "docs"
-	sessionPath = "/api/session"
-	storesPath  = "/api/stores/"
-	healthPath  = "/api/health"
+	sessionPath    = "/api/session"
+	storesPath     = "/api/stores/"
+	storesListPath = "/api/stores"
+	healthPath     = "/api/health"
 )
 
 // resourceKind identifies what a parsed API path refers to.

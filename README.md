@@ -1,14 +1,24 @@
-# Document Store
+# B-tree NoSQL DB
 
-An in-memory JSON document store written in Go. It exposes an HTTP API for creating stores of JSON documents, validating them against JSON Schema, applying patch operations to nested JSON, and authenticating with bearer tokens.
+A lightweight NoSQL document database written in Go, built around a hand-written
+**B-tree** storage engine. Documents are schemaless JSON grouped into stores and
+addressed by id; ordering, range scans, and concurrency all come from the B-tree
+index rather than a relational engine. It exposes an HTTP API for creating and
+querying stores, validating documents against JSON Schema, applying RFC 6902
+patches, streaming changes over Server-Sent Events, and authenticating with
+bearer tokens issued via `POST /api/session`.
 
-This project is a personal systems / backend learning exercise focused on request handling, concurrent data structures, schema validation, and modular package design.
+This is a personal systems / backend project focused on the parts that make a
+NoSQL store interesting: an ordered key/value engine with disk snapshot
+persistence, a concurrency model for that engine (copy-on-write reads plus a
+sharded concurrent-writer variant), schema validation, and clean, decoupled
+package design.
 
 ## Features
 
 - HTTP JSON document API: flat stores of documents addressed by id
 - JSON Schema validation on write and patch
-- Bearer-token authentication (crypto/rand tokens) with optional preloaded tokens
+- Bearer-token authentication via session login (`crypto/rand` tokens)
 - RFC 6902 JSON Patch (add/remove/replace/move/copy/test)
 - Optional Server-Sent Events watches on reads
 - Ordered in-memory index: a hand-written copy-on-write B-tree, with a sharded variant for concurrent writers
@@ -27,10 +37,10 @@ No external database, Docker, or cloud services are required. Everything runs in
 The `Makefile` wraps the common flows:
 
 ```bash
-make run    # build and run with schemas/schema1.json + token.json + data/snapshot.json
+make run    # build and run with schemas/document.json + data/snapshot.json
 make demo   # end-to-end persistence demo (create, restart, verify)
 make test   # go test ./...
-make build  # build the docstore binary
+make build  # build the btreedb binary
 ```
 
 Manually, without the Makefile:
@@ -39,14 +49,14 @@ Manually, without the Makefile:
 git clone https://github.com/muradImre/database-design.git
 cd database-design
 go mod tidy
-go build -o docstore .
-./docstore --schema schemas/schema1.json --tokens token.json --data data/snapshot.json --port 8080
+go build -o btreedb .
+./btreedb --schema schemas/document.json --data data/snapshot.json --port 8080
 ```
 
 Or without building:
 
 ```bash
-go run . --schema schemas/schema1.json --tokens token.json --data data/snapshot.json --port 8080
+go run . --schema schemas/document.json --data data/snapshot.json --port 8080
 ```
 
 ### CLI flags
@@ -55,9 +65,9 @@ go run . --schema schemas/schema1.json --tokens token.json --data data/snapshot.
 | ---- | ------- | ----------- |
 | `--port` | `8080` | TCP port to listen on |
 | `--schema` | `schema.json` | JSON Schema file for document validation |
-| `--tokens` | `tokens.json` | Username → token map for preloaded access tokens |
 | `--data` | `data/snapshot.json` | Snapshot file for disk persistence (empty disables it) |
 | `--index` | `cow` | Index implementation: `cow` (copy-on-write, lock-free reads) or `sharded` (concurrent writers) |
+| `--tokens` | _(empty)_ | Optional username→token file for preloaded access tokens |
 | `--verbose` | `false` | Debug logging |
 
 ### Persistence
@@ -70,6 +80,9 @@ block on the filesystem. A final snapshot is flushed on graceful shutdown
 so stores, documents, and metadata survive restarts. Pass `--data ""` to disable
 persistence entirely.
 
+Sessions are in-memory only: after a restart you create a new session with
+`POST /api/session`. Document data is what persistence covers.
+
 ### Health check
 
 ```bash
@@ -79,29 +92,15 @@ curl -s http://localhost:8080/api/health
 
 `/api/health` requires no authentication.
 
-`token.json` maps usernames to tokens, for example:
-
-```json
-{
-  "benjamin": "benjamin_token",
-  "victor": "victor_token",
-  "murad": "murad_token"
-}
-```
-
 ## API overview
 
-Authenticate either with a preloaded token or by creating a session:
+Create a session, then use the returned bearer token:
 
 ```bash
-# Create a session
-curl -s -X POST http://localhost:8080/api/session \
+TOKEN=$(curl -s -X POST http://localhost:8080/api/session \
   -H 'Content-Type: application/json' \
-  -d '{"username":"demo"}'
+  -d '{"username":"demo"}' | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 # → {"access_token":"...","token_type":"Bearer","expires_in":3600}
-
-# Or use a preloaded token from --tokens
-export TOKEN=murad_token
 ```
 
 Each store is a flat map of documents addressed by id. Any nesting lives inside
@@ -109,9 +108,10 @@ a document's JSON body (edited with patch), not as separate collection
 resources. The path segments are:
 
 ```text
-/api/stores/{store}            # a store
-/api/stores/{store}/docs       # list documents / create with generated id
-/api/stores/{store}/docs/{id}  # a single document
+/api/stores                     # list store names
+/api/stores/{store}             # a store
+/api/stores/{store}/docs        # list documents / create with generated id
+/api/stores/{store}/docs/{id}   # a single document
 ```
 
 Examples:
@@ -176,7 +176,7 @@ Errors use a consistent envelope:
 ├── btreeidx/      # Concurrent copy-on-write B-tree index
 ├── shardedidx/    # Sharded index variant for concurrent writers
 ├── pair/          # Generic key/value tuple for query results
-├── schemas/       # Example JSON schemas
+├── schemas/       # Example JSON Schema (document validation)
 ├── scripts/       # Demo scripts
 ├── main.go        # Process entrypoint
 ├── Makefile       # build / run / demo / test targets
@@ -201,5 +201,5 @@ go test ./...
 ## Notes
 
 - Storage is in-memory with JSON snapshot persistence; stores survive restarts when `--data` is set.
-- Preloaded tokens expire 24 hours after process start; session tokens expire after 1 hour.
-- Keep real credentials out of the tokens file if you fork or publish changes.
+- Session tokens expire after 1 hour and do not survive process restart.
+- Preloaded tokens via `--tokens` are optional and mainly useful for automation.

@@ -173,6 +173,18 @@ func newMux(handlers *serverHandlers) *http.ServeMux {
 		}
 	})
 
+	// GET /api/stores lists the names of all stores.
+	mux.HandleFunc(storesListPath, handlers.AuthorizationMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "OPTIONS":
+			handlePreflight(w)
+		case "GET":
+			handlers.listStores(w, r)
+		default:
+			writeAPIError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		}
+	}))
+
 	mux.HandleFunc(storesPath, handlers.AuthorizationMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "OPTIONS":
@@ -193,6 +205,20 @@ func newMux(handlers *serverHandlers) *http.ServeMux {
 	}))
 
 	return mux
+}
+
+// listStores returns the names of every store, in order.
+func (h *serverHandlers) listStores(w http.ResponseWriter, r *http.Request) {
+	pairs, err := h.databases.Query(r.Context(), "", maxKey)
+	if err != nil {
+		writeAPIError(w, http.StatusInternalServerError, "internal", "error listing stores")
+		return
+	}
+	names := make([]string, 0, len(pairs))
+	for _, p := range pairs {
+		names = append(names, p.Key)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"stores": names})
 }
 
 func newHandlers(authfac AuthFactory, dbfac DBFactory, valfac ValidatorFactory, dbsfac DatabasesFactory[string, DB], patchApplier PatchApplier) *serverHandlers {

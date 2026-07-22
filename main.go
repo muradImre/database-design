@@ -45,7 +45,7 @@ func main() {
 
 	flag.IntVar(&port, "port", 8080, "TCP port to listen on")
 	flag.StringVar(&schemaPath, "schema", "schema.json", "JSON Schema file used to validate documents")
-	flag.StringVar(&tokensPath, "tokens", "tokens.json", "JSON file mapping usernames to preloaded access tokens")
+	flag.StringVar(&tokensPath, "tokens", "", "optional JSON file mapping usernames to preloaded access tokens")
 	flag.StringVar(&dataPath, "data", "data/snapshot.json", "snapshot file for disk persistence (empty disables it)")
 	flag.StringVar(&indexKind, "index", "cow", "index implementation: cow (copy-on-write, lock-free reads) or sharded (concurrent writers)")
 	flag.BoolVar(&verbose, "verbose", false, "enable debug logging")
@@ -68,21 +68,22 @@ func main() {
 		return
 	}
 
-	// tokens.json is username -> token; AuthManager stores token -> username.
-	usernameToToken := make(map[string]string)
-	tokenFile, err := os.ReadFile(tokensPath)
-	if err == nil {
+	// Optional preloaded tokens: file is username -> token; AuthManager stores token -> username.
+	existingTokens := make(map[string]string)
+	if tokensPath != "" {
+		tokenFile, err := os.ReadFile(tokensPath)
+		if err != nil {
+			slog.Error("failed to read tokens file", "path", tokensPath, "error", err)
+			return
+		}
+		usernameToToken := make(map[string]string)
 		if err := json.Unmarshal(tokenFile, &usernameToToken); err != nil {
 			slog.Error("failed to parse tokens file", "error", err)
 			return
 		}
-	} else {
-		fmt.Printf("Tokens file not found (%s); only login-issued tokens will work.\n", tokensPath)
-	}
-
-	existingTokens := make(map[string]string)
-	for username, token := range usernameToToken {
-		existingTokens[token] = username
+		for username, token := range usernameToToken {
+			existingTokens[token] = username
+		}
 	}
 
 	authManager := auth.NewAuthManager(existingTokens)

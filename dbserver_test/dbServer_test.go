@@ -63,7 +63,7 @@ func newHandler(t *testing.T) http.Handler {
 	databasesFactory := func() dbServer.DBIndex[string, dbServer.DB] {
 		return btreeidx.New[string, dbServer.DB]()
 	}
-	sch, err := parser.SchemaParser("../schemas/schema1.json")
+	sch, err := parser.SchemaParser("../schemas/document.json")
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}

@@ -1,6 +1,5 @@
-BINARY := docstore
-SCHEMA := schemas/schema1.json
-TOKENS := token.json
+BINARY := btreedb
+SCHEMA := schemas/document.json
 DATA   := data/snapshot.json
 PORT   := 8080
 
@@ -10,7 +9,7 @@ build:
 	go build -o $(BINARY) .
 
 run: build
-	./$(BINARY) --schema $(SCHEMA) --tokens $(TOKENS) --data $(DATA) --port $(PORT)
+	./$(BINARY) --schema $(SCHEMA) --data $(DATA) --port $(PORT)
 
 demo: build
 	./scripts/demo.sh

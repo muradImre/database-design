@@ -24,6 +24,7 @@ go.work
 .DS_Store
 
 # local binary
+btreedb
 docstore
 
 # Snapshot persistence data (keep the directory, ignore snapshots)
